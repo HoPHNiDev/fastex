@@ -3,5 +3,69 @@ name = "fastex"
 version = "0.1.0"
 description = "Fastex — lightweight extensions and utilities for building FastAPI applications faster."
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.116.1",
+    "loguru>=0.7.3",
+    "pydantic-settings>=2.10.1",
+    "redis>=6.4.0",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "mypy>=1.17.1",
+    "pre-commit>=4.3.0",
+    "uvicorn>=0.35.0",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true # Don't fail if third-party libs have no type hints
+warn_unused_ignores = true # Useful warnings
+disallow_untyped_defs = false # Type annotation rules
+disallow_incomplete_defs = true # Type annotation rules
+no_implicit_optional = true # No implicit Optional
+check_untyped_defs = true # Check even untyped functions
+disallow_any_generics = true # Forbid unnecessary Any
+cache_dir = ".mypy_cache" # Cache directory
+exclude = '^(tests|alembic)/' # Exclude folders
+plugins = ["pydantic.mypy"] # Plugins (e.g. for Pydantic v2)
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+skip-string-normalization = false
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.ruff_cache
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+fix = true
+unsafe-fixes = false
+exclude = [
+    ".git",
+    ".venv",
+    "migrations",
+    "__pycache__",
+    "build",
+    "dist"
+]
+
+[tool.ruff.lint]
+select = ["F", "E", "I"]
+ignore = ["E501", "F821"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
