@@ -6,34 +6,36 @@ from redis import asyncio as aredis
 from redis import exceptions as redis_exc
 
 from fastex.limiter.backend.base import BaseLimiterBackend
-from fastex.limiter.backend.enums import FallbackMode
 from fastex.limiter.backend.exceptions import LimiterBackendError
 from fastex.limiter.backend.interfaces import LimiterBackendConnectConfig
 from fastex.limiter.backend.redis.schemas import RedisLimiterBackendConnectConfig
 from fastex.limiter.backend.redis.scripts import LuaScript, SlidingWindowScript
 from fastex.limiter.backend.schemas import RateLimitResult
-from fastex.limiter.backend.utils import filter_arguments
 from fastex.limiter.config import limiter_settings
 from fastex.limiter.schemas import RateLimitConfig
-from fastex.logging import log
+from fastex.logging.logger import FastexLogger
 
 
 class RedisLimiterBackend(BaseLimiterBackend):
     """Redis backend for rate limiting."""
 
-    _redis: aredis.Redis | None
-    _script_sha: str | None
-    _lua_script: LuaScript | None
+    logger = FastexLogger("RedisLimiterBackend")
+
+    _redis: aredis.Redis | None = None
+    _script_sha: str | None = None
+    _lua_script: LuaScript | None = None
 
     async def _load_script(self) -> None:
         """Load Lua script into Redis and store its SHA."""
         try:
             script_content = self.lua_script.get_script()
             self._script_sha = await self.redis.script_load(script_content)
-            log.debug(f"Lua script loaded with SHA: {self._script_sha}")
+            self.logger.debug(
+                f"[limiter] - Lua script loaded with SHA: {self._script_sha}"
+            )
 
         except Exception as e:
-            log.error(f"Failed to load Lua script: {e}")
+            self.logger.error(f"Failed to load Lua script: {e}")
             raise LimiterBackendError(f"Failed to load Lua script: {e}")
 
     @staticmethod
@@ -56,17 +58,17 @@ class RedisLimiterBackend(BaseLimiterBackend):
             self._redis = aredis.from_url(config.redis_client)  # type: ignore
         else:
             self._redis = config.redis_client
-        log.debug("Redis connection established")
+        self.logger.debug("Redis connection established")
 
         self._fallback_mode = config.fallback_mode or limiter_settings.FALLBACK_MODE
         self._lua_script = config.lua_script or SlidingWindowScript()
         await self._load_script()
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Disconnect from the Redis service."""
         if self._redis:
             await self._redis.aclose()
-            log.debug("Redis connection closed")
+            self.logger.debug("Redis connection closed")
         self._redis = None
         self._script_sha = None
 
@@ -105,7 +107,7 @@ class RedisLimiterBackend(BaseLimiterBackend):
             )
 
         except (redis_exc.ConnectionError, redis_exc.RedisError) as e:
-            log.error(f"[RateLimiter] Redis unavailable: {e}. Skipping rate limit.")
+            self.logger.error(f"Redis unavailable: {e}. Skipping rate limit.")
             return await self._handle_fallback(e, config)
 
     def is_connected(self, raise_exc: bool = False) -> bool:
@@ -116,14 +118,6 @@ class RedisLimiterBackend(BaseLimiterBackend):
             raise LimiterBackendError("Redis not connected or Lua script not loaded")
 
         return connected
-
-    def composite_config(
-        self,
-        redis_client: aredis.Redis | str,
-        fallback_mode: FallbackMode | None = None,
-        lua_script: LuaScript | None = None,
-    ) -> dict[str, Any]:
-        return filter_arguments(self.connect, redis_client, fallback_mode, lua_script)
 
     @property
     def redis(self) -> aredis.Redis:

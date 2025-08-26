@@ -20,8 +20,8 @@ class LimiterState(ILimiterState):
         backend: LimiterBackend | None = None,
         prefix: str | None = None,
         trust_proxy_headers: bool | None = None,
-        identifier: IdentifierFunction = default_identifier,
-        callback: CallbackFunction = http_default_callback,
+        identifier: IdentifierFunction | None = default_identifier,
+        callback: CallbackFunction | None = http_default_callback,
     ) -> None:
         self._backend = backend
         self._prefix = prefix or limiter_settings.DEFAULT_PREFIX

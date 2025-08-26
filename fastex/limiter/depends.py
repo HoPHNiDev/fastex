@@ -9,7 +9,7 @@ from fastex.limiter.config import limiter_settings
 from fastex.limiter.schemas import RateLimitConfig
 from fastex.limiter.state import limiter_state
 from fastex.limiter.state.interfaces import ILimiterState
-from fastex.logging import log
+from fastex.logging.logger import FastexLogger
 
 
 class RateLimiter:
@@ -19,6 +19,7 @@ class RateLimiter:
     """
 
     state: ILimiterState = limiter_state
+    logger = FastexLogger("RateLimiter")
 
     def __init__(
         self,
@@ -65,7 +66,7 @@ class RateLimiter:
 
         rate_key = await self.identifier(request)
         key = f"{self.state.prefix}:{rate_key}:{route_index}:{dep_index}"
-        log.debug(f"[RateLimiter] Generated rate limit key: {key}")
+        self.logger.debug(f"Generated rate limit key: {key}")
 
         return key
 
@@ -79,12 +80,12 @@ class RateLimiter:
         self.state.backend.is_connected(raise_exc=True)
 
         key = await self._get_key(request)
-        log.debug(f"[RateLimiter] Key: {key}")
+        self.logger.debug(f"Key: {key}")
 
         result = await self.state.backend.check_limit(key, self.config)
 
         if result.is_exceeded:
-            log.warning(
-                f"[RateLimiter] Limit exceeded for key: {key}, will retry after {result.retry_after_ms}ms"
+            self.logger.warning(
+                f"Limit exceeded for key: {key}, will retry after {result.retry_after_ms}ms"
             )
             await self.callback(request, response, result)

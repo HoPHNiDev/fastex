@@ -6,24 +6,25 @@ from fastex.limiter.backend.interfaces import LimiterBackend
 from fastex.limiter.backend.schemas import RateLimitResult
 from fastex.limiter.config import limiter_settings
 from fastex.limiter.schemas import RateLimitConfig
-from fastex.logging import log
+from fastex.logging.logger import FastexLogger
 
 
 class BaseLimiterBackend(LimiterBackend):
     """Base class for all limiter backends."""
 
-    _fallback_mode: FallbackMode | None
+    _fallback_mode: FallbackMode | None = None
+    logger: FastexLogger
 
     async def _handle_fallback(
         self, error: Exception | str, config: RateLimitConfig
     ) -> RateLimitResult:
         match self.fallback_mode:
             case FallbackMode.ALLOW:
-                log.warning(f"Redis unavailable: {error}. Allowing request.")
+                self.logger.warning(f"Redis unavailable: {error}. Allowing request.")
                 return RateLimitResult(is_exceeded=False, limit_times=config.times)
 
             case FallbackMode.DENY:
-                log.warning(f"Redis unavailable: {error}. Denying request.")
+                self.logger.warning(f"Redis unavailable: {error}. Denying request.")
                 return RateLimitResult(
                     is_exceeded=True,
                     limit_times=config.times,

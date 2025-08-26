@@ -1,11 +1,12 @@
-from loguru import logger
-
 from fastex.limiter.backend.interfaces import LimiterBackend
 from fastex.limiter.state import limiter_state
 from fastex.limiter.state.schemas import (
     LimiterStateConfig,
     LimiterStateConfigWithBackend,
 )
+from fastex.logging.logger import FastexLogger
+
+logger = FastexLogger("LimiterCore")
 
 
 async def configure_limiter(

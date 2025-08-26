@@ -5,3 +5,7 @@ lint:
 .PHONY: check-lint
 check-lint:
 	pre-commit run --all-files --hook-stage push --verbose
+
+.PHONY: test
+test:
+	pytest

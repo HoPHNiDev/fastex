@@ -3,7 +3,7 @@ from typing import Any, Protocol, TypeVar
 
 from pydantic import BaseModel
 
-from fastex.limiter.backend import FallbackMode
+from fastex.limiter.backend.enums import FallbackMode
 from fastex.limiter.backend.schemas import RateLimitResult
 from fastex.limiter.schemas import RateLimitConfig
 

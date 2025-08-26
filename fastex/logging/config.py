@@ -1,21 +1,19 @@
 import sys
 from os import PathLike
-from typing import Any
 
 from loguru import logger
 
-log = logger.bind(module="fastex")
+log = logger.opt(colors=True, lazy=True)
 BASE_LOG_FORMAT = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
     "<level>{level: <8}</level> | "
-    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+    "<cyan>{name}</cyan>:<cyan>{function: <10}</cyan>:<cyan>{line: <3}</cyan> - "
     "<level>{message}</level>"
 )
 
 
 def configure_fastex_logging(
-    enable: bool = True,
-    level: str = "INFO",
+    level: str = "DEBUG",
     sink: str | PathLike[str] | None = None,
     log_format: str | None = None,
 ) -> None:
@@ -23,25 +21,26 @@ def configure_fastex_logging(
     Configure loguru for the fastex library.
 
     Args:
-        enable (bool): Enable or disable logging.
         level (str): Log level ("DEBUG", "INFO", "WARNING", ...).
         sink (str | PathLike | None): Log output destination (file path or None for stdout).
         log_format (str|None): Custom log format.
     """
     logger.remove()
 
-    if not enable:
-        return
+    logger.add(
+        sink or sys.stdout,
+        level=level,
+        format=log_format or BASE_LOG_FORMAT,
+        colorize=True,
+    )
 
-    logger_params: dict[str, Any] = {
-        "level": level,
-        "format": log_format or BASE_LOG_FORMAT,
-    }
 
-    if sink is not None:
-        logger_params["sink"] = sink
-    else:
-        logger_params["sink"] = sys.stdout
+def enable_fastex_logging() -> None:
+    logger.enable("fastex")
 
-    logger.add(**logger_params)
-    log.debug(f"Fastex logging configured - level: {level}, sink: {sink or 'stdout'}")
+
+def disable_fastex_logging() -> None:
+    logger.disable("fastex")
+
+
+configure_fastex_logging()

@@ -13,7 +13,7 @@ from fastex.limiter.backend.interfaces import (
 )
 from fastex.limiter.backend.schemas import RateLimitResult
 from fastex.limiter.schemas import RateLimitConfig
-from fastex.logging import log
+from fastex.logging.logger import FastexLogger
 
 
 class CompositeLimiterBackend(LimiterBackend):
@@ -35,6 +35,8 @@ class CompositeLimiterBackend(LimiterBackend):
     - Development/production environment switching
     """
 
+    logger = FastexLogger("CompositeLimiterBackend")
+
     def __init__(
         self,
         primary: LimiterBackend,
@@ -42,7 +44,7 @@ class CompositeLimiterBackend(LimiterBackend):
         strategy: SwitchingStrategy = SwitchingStrategy.CIRCUIT_BREAKER,
         failure_threshold: int = 5,
         recovery_timeout_seconds: int = 60,
-        health_check_interval_seconds: int = 30,
+        health_check_interval_seconds: float = 30,
     ) -> None:
         """
         Initialize composite backend.
@@ -117,9 +119,9 @@ class CompositeLimiterBackend(LimiterBackend):
             await self._primary.connect(config=primary_config)
             primary_connected = True
             self._primary_healthy = True
-            log.debug("Primary backend connected successfully")
+            self.logger.debug("Primary backend connected successfully")
         except Exception as e:
-            log.warning(f"Failed to connect primary backend: {e}")
+            self.logger.warning(f"Failed to connect primary backend: {e}")
             self._primary_healthy = False
             self._circuit_state = CircuitBreakerState.OPEN
 
@@ -128,9 +130,9 @@ class CompositeLimiterBackend(LimiterBackend):
             await self._fallback.connect(config=fallback_config)
             fallback_connected = True
             self._fallback_healthy = True
-            log.debug("Fallback backend connected successfully")
+            self.logger.debug("Fallback backend connected successfully")
         except Exception as e:
-            log.warning(f"Failed to connect fallback backend: {e}")
+            self.logger.warning(f"Failed to connect fallback backend: {e}")
             self._fallback_healthy = False
 
         # At least one backend must be connected
@@ -145,7 +147,7 @@ class CompositeLimiterBackend(LimiterBackend):
         if self._strategy == SwitchingStrategy.HEALTH_CHECK:
             self._health_check_task = asyncio.create_task(self._health_check_loop())
 
-        log.info(
+        self.logger.info(
             f"CompositeLimiterBackend connected - "
             f"primary: {'✓' if primary_connected else '✗'}, "
             f"fallback: {'✓' if fallback_connected else '✗'}, "
@@ -174,16 +176,15 @@ class CompositeLimiterBackend(LimiterBackend):
         if disconnect_tasks:
             await asyncio.gather(*disconnect_tasks, return_exceptions=True)
 
-        log.debug("CompositeLimiterBackend disconnected")
+        self.logger.debug("CompositeLimiterBackend disconnected")
 
-    @staticmethod
-    async def _safe_disconnect(backend: LimiterBackend, name: str) -> None:
+    async def _safe_disconnect(self, backend: LimiterBackend, name: str) -> None:
         """Safely disconnect a backend with error handling."""
         try:
             await backend.disconnect()
-            log.debug(f"{name} backend disconnected")
+            self.logger.debug(f"{name} backend disconnected")
         except Exception as e:
-            log.warning(f"Error disconnecting {name} backend: {e}")
+            self.logger.warning(f"Error disconnecting {name} backend: {e}")
 
     async def check_limit(self, key: str, config: RateLimitConfig) -> RateLimitResult:
         """
@@ -215,7 +216,9 @@ class CompositeLimiterBackend(LimiterBackend):
             else:
                 self._fallback_requests += 1
 
-            log.debug(f"Rate limit check successful using {backend_name} backend")
+            self.logger.debug(
+                f"Rate limit check successful using {backend_name} backend"
+            )
             return result
 
         except Exception as e:
@@ -227,7 +230,7 @@ class CompositeLimiterBackend(LimiterBackend):
             else:
                 self._fallback_errors += 1
 
-            log.warning(f"{backend_name} backend failed: {e}")
+            self.logger.warning(f"{backend_name} backend failed: {e}")
 
             # Try the other backend if available
             other_backend = (
@@ -238,7 +241,7 @@ class CompositeLimiterBackend(LimiterBackend):
             if self._is_backend_available(other_backend):
                 try:
                     result = await other_backend.check_limit(key, config)
-                    log.info(
+                    self.logger.info(
                         f"Successfully used {other_name} backend after {backend_name} failure"
                     )
 
@@ -250,14 +253,16 @@ class CompositeLimiterBackend(LimiterBackend):
 
                     return result
                 except Exception as fallback_error:
-                    log.error(
+                    self.logger.error(
                         f"Both backends failed: {backend_name}={e}, {other_name}={fallback_error}"
                     )
                     raise LimiterBackendError(
                         f"Both backends failed: primary={e}, fallback={fallback_error}"
                     )
             else:
-                log.error(f"No healthy backend available after {backend_name} failure")
+                self.logger.error(
+                    f"No healthy backend available after {backend_name} failure"
+                )
                 raise LimiterBackendError(
                     f"{backend_name} backend failed and no healthy alternative: {e}"
                 )
@@ -298,7 +303,7 @@ class CompositeLimiterBackend(LimiterBackend):
                     and time.time() - self._last_failure_time >= self._recovery_timeout
                 ):
                     self._circuit_state = CircuitBreakerState.HALF_OPEN
-                    log.info("Circuit breaker moving to HALF_OPEN state")
+                    self.logger.info("Circuit breaker moving to HALF_OPEN state")
                     return self._primary
                 return self._fallback
             case CircuitBreakerState.HALF_OPEN:
@@ -319,7 +324,7 @@ class CompositeLimiterBackend(LimiterBackend):
             return self._primary
 
     @staticmethod
-    def _is_backend_available(backend: LimiterBackend) -> bool:
+    def _is_backend_available(backend: LimiterBackend | None) -> bool:
         """Check if backend is available for use."""
         if backend is None:
             return False
@@ -334,7 +339,7 @@ class CompositeLimiterBackend(LimiterBackend):
                 # Primary is working again, close the circuit
                 self._circuit_state = CircuitBreakerState.CLOSED
                 self._failure_count = 0
-                log.info("Circuit breaker CLOSED - primary backend recovered")
+                self.logger.info("Circuit breaker CLOSED - primary backend recovered")
             elif self._circuit_state == CircuitBreakerState.CLOSED:
                 # Reset failure count on successful primary operation
                 self._failure_count = 0
@@ -355,27 +360,27 @@ class CompositeLimiterBackend(LimiterBackend):
             ):
                 # Open the circuit
                 self._circuit_state = CircuitBreakerState.OPEN
-                log.warning(
+                self.logger.warning(
                     f"Circuit breaker OPENED after {self._failure_count} failures. "
                     f"Will retry primary backend in {self._recovery_timeout} seconds"
                 )
             elif self._circuit_state == CircuitBreakerState.HALF_OPEN:
                 # Failed during testing, go back to open
                 self._circuit_state = CircuitBreakerState.OPEN
-                log.warning("Circuit breaker back to OPEN state after failed test")
+                self.logger.warning(
+                    "Circuit breaker back to OPEN state after failed test"
+                )
 
     async def _health_check_loop(self) -> None:
         """Background health checking loop."""
         while self._connected:
             try:
                 await asyncio.sleep(self._health_check_interval)
-                if not self._connected:
-                    break
                 await self._perform_health_checks()
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                log.error(f"Error in health check loop: {e}")
+                self.logger.error(f"Error in health check loop: {e}")
 
     async def _perform_health_checks(self) -> None:
         """Perform health checks on both backends."""
@@ -383,21 +388,23 @@ class CompositeLimiterBackend(LimiterBackend):
         try:
             self._primary_healthy = self._primary.is_connected()
             if not self._primary_healthy:
-                log.debug("Primary backend health check failed - not connected")
+                self.logger.debug("Primary backend health check failed - not connected")
         except Exception as e:
             self._primary_healthy = False
-            log.debug(f"Primary backend health check failed: {e}")
+            self.logger.debug(f"Primary backend health check failed: {e}")
 
         # Check fallback backend
         try:
             self._fallback_healthy = self._fallback.is_connected()
             if not self._fallback_healthy:
-                log.debug("Fallback backend health check failed - not connected")
+                self.logger.debug(
+                    "Fallback backend health check failed - not connected"
+                )
         except Exception as e:
             self._fallback_healthy = False
-            log.debug(f"Fallback backend health check failed: {e}")
+            self.logger.debug(f"Fallback backend health check failed: {e}")
 
-        log.debug(
+        self.logger.debug(
             f"Health check completed - primary: {'✓' if self._primary_healthy else '✗'}, "
             f"fallback: {'✓' if self._fallback_healthy else '✗'}"
         )
@@ -458,13 +465,13 @@ class CompositeLimiterBackend(LimiterBackend):
         if self._strategy == SwitchingStrategy.CIRCUIT_BREAKER:
             self._circuit_state = CircuitBreakerState.CLOSED
             self._failure_count = 0
-            log.info("Manually forced switch to primary backend")
+            self.logger.info("Manually forced switch to primary backend")
 
     async def force_switch_to_fallback(self) -> None:
         """Force switch to fallback backend (for maintenance)."""
         if self._strategy == SwitchingStrategy.CIRCUIT_BREAKER:
             self._circuit_state = CircuitBreakerState.OPEN
-            log.info("Manually forced switch to fallback backend")
+            self.logger.info("Manually forced switch to fallback backend")
 
     @property
     def current_backend(self) -> str:
@@ -473,7 +480,7 @@ class CompositeLimiterBackend(LimiterBackend):
             backend = self._select_backend()
             return "primary" if backend == self._primary else "fallback"
         except Exception as e:
-            log.error(f"Error determining current backend: {e}")
+            self.logger.error(f"Error determining current backend: {e}")
             return "unknown"
 
     @property

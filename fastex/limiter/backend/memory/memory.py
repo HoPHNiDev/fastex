@@ -11,7 +11,7 @@ from fastex.limiter.backend.memory.schemas import MemoryLimiterBackendConnectCon
 from fastex.limiter.backend.schemas import RateLimitResult
 from fastex.limiter.config import limiter_settings
 from fastex.limiter.schemas import RateLimitConfig
-from fastex.logging import log
+from fastex.logging.logger import FastexLogger
 
 
 class InMemoryLimiterBackend(BaseLimiterBackend):
@@ -32,6 +32,8 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
 
     Note: Data is not persistent and will be lost on restart.
     """
+
+    logger = FastexLogger("InMemoryLimiterBackend")
 
     def __init__(
         self,
@@ -78,7 +80,7 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
 
         self._cleanup_task = asyncio.create_task(self._background_cleanup())
 
-        log.debug(
+        self.logger.debug(
             f"InMemoryLimiterBackend connected with cleanup_interval={self._cleanup_interval}s, "
             f"max_keys={self._max_keys}, fallback_mode={self.fallback_mode.value}"
         )
@@ -99,7 +101,7 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
             self._store.clear()
             self._locks.clear()
 
-        log.debug("InMemoryLimiterBackend disconnected and cleaned up")
+        self.logger.debug("InMemoryLimiterBackend disconnected and cleaned up")
 
     async def check_limit(self, key: str, config: RateLimitConfig) -> RateLimitResult:
         """
@@ -122,7 +124,7 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
 
         # Memory protection check
         if len(self._store) >= self._max_keys and key not in self._store:
-            log.warning(
+            self.logger.warning(
                 f"Memory backend reached max_keys limit ({self._max_keys}), "
                 f"applying fallback mode: {self.fallback_mode.value}"
             )
@@ -150,7 +152,7 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
                     (oldest_timestamp + config.total_milliseconds) / 1000
                 )
 
-                log.debug(
+                self.logger.debug(
                     f"Rate limit exceeded for key '{key}': {current_count}/{config.times} "
                     f"requests, retry_after={retry_after_ms}ms"
                 )
@@ -167,7 +169,7 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
             self._store[key].append(now_ms)
             remaining_requests = config.times - current_count - 1
 
-            log.debug(
+            self.logger.debug(
                 f"Request allowed for key '{key}': {current_count + 1}/{config.times} "
                 f"requests, remaining={remaining_requests}"
             )
@@ -213,7 +215,7 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                log.error(f"Error in background cleanup: {e}")
+                self.logger.error(f"Error in background cleanup: {e}")
 
     async def _cleanup_expired_entries(self) -> None:
         """Remove expired entries from all keys to free memory."""
@@ -247,7 +249,7 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
                     del self._locks[key]
 
         if keys_to_remove or cleaned_count:
-            log.debug(
+            self.logger.debug(
                 f"Cleanup completed: removed {len(keys_to_remove)} empty keys, "
                 f"cleaned {cleaned_count} expired entries, "
                 f"total keys: {len(self._store)}"
@@ -289,4 +291,4 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
         async with self._global_lock:
             self._store.clear()
             self._locks.clear()
-        log.debug("All in-memory rate limit data cleared")
+        self.logger.debug("All in-memory rate limit data cleared")
