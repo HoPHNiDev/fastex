@@ -9,3 +9,6 @@ class RedisLimiterBackendConnectConfig(LimiterBackendConnectConfig):
     redis_client: aredis.Redis | str
     fallback_mode: FallbackMode | None = None
     lua_script: LuaScript | None = None
+
+    class Config:
+        extra = "forbid"

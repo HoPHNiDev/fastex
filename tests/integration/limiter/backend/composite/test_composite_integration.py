@@ -19,6 +19,7 @@ Tests cover:
 
 import asyncio
 import time
+from datetime import datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -66,9 +67,9 @@ class TestHighAvailabilityScenarios:
         redis_result = RateLimitResult(
             is_exceeded=False,
             limit_times=100,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=99,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         redis_backend.check_limit.return_value = redis_result
 
@@ -84,9 +85,9 @@ class TestHighAvailabilityScenarios:
         memory_result = RateLimitResult(
             is_exceeded=False,
             limit_times=100,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=99,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         memory_backend.check_limit.return_value = memory_result
 
@@ -131,18 +132,18 @@ class TestHighAvailabilityScenarios:
             return RateLimitResult(
                 is_exceeded=False,
                 limit_times=50,
-                total_hits=1,
+                retry_after_ms=0,
                 remaining_requests=49,
-                reset_time_milliseconds=30000,
+                reset_time=None,
             )
 
         primary.check_limit.side_effect = intermittent_primary
         fallback.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=50,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=49,
-            reset_time_milliseconds=30000,
+            reset_time=None,
         )
 
         # Make several requests
@@ -187,9 +188,9 @@ class TestHighAvailabilityScenarios:
         fallback.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=10,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=9,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
 
         # Generate failures to open circuit
@@ -208,9 +209,9 @@ class TestHighAvailabilityScenarios:
         primary.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=10,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=9,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
 
         # Next request should test primary (HALF_OPEN)
@@ -247,9 +248,9 @@ class TestPerformanceScenarios:
             return RateLimitResult(
                 is_exceeded=False,
                 limit_times=100,
-                total_hits=1,
+                retry_after_ms=0,
                 remaining_requests=99,
-                reset_time_milliseconds=60000,
+                reset_time=None,
             )
 
         primary.check_limit.side_effect = fast_check
@@ -313,18 +314,18 @@ class TestPerformanceScenarios:
             return RateLimitResult(
                 is_exceeded=False,
                 limit_times=100,
-                total_hits=1,
+                retry_after_ms=0,
                 remaining_requests=99,
-                reset_time_milliseconds=60000,
+                reset_time=datetime.now(),
             )
 
         primary.check_limit.side_effect = unreliable_primary
         fallback.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=100,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=99,
-            reset_time_milliseconds=60000,
+            reset_time=datetime.now(),
         )
 
         config = RateLimitConfig(times=100, seconds=60)
@@ -433,16 +434,16 @@ class TestHealthCheckScenarios:
         primary.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=10,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=9,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         fallback.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=10,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=9,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
 
         await composite.connect()
@@ -511,18 +512,18 @@ class TestMultiStrategyScenarios:
                 return RateLimitResult(
                     is_exceeded=False,
                     limit_times=10,
-                    total_hits=1,
+                    retry_after_ms=0,
                     remaining_requests=9,
-                    reset_time_milliseconds=60000,
+                    reset_time=None,
                 )
 
             primary.check_limit.side_effect = failing_primary
             fallback.check_limit.return_value = RateLimitResult(
                 is_exceeded=False,
                 limit_times=10,
-                total_hits=1,
+                retry_after_ms=0,
                 remaining_requests=9,
-                reset_time_milliseconds=60000,
+                reset_time=None,
             )
 
             config = RateLimitConfig(times=10, seconds=60)
@@ -579,9 +580,9 @@ class TestProductionLikeScenarios:
             return RateLimitResult(
                 is_exceeded=False,
                 limit_times=config.times,
-                total_hits=1,
+                retry_after_ms=0,
                 remaining_requests=config.times - 1,
-                reset_time_milliseconds=config.total_milliseconds,
+                reset_time=None,
             )
 
         redis_backend.check_limit.side_effect = lambda k, c: create_response(c)
@@ -632,9 +633,9 @@ class TestProductionLikeScenarios:
         primary.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=50,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=49,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
 
         for i in range(5):
@@ -648,9 +649,9 @@ class TestProductionLikeScenarios:
         fallback.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=50,
-            total_hits=1,
-            remaining_requests=49,
-            reset_time_milliseconds=60000,
+            retry_after_ms=0,
+            remaining_requests=59,
+            reset_time=None,
         )
 
         # During maintenance - should use fallback

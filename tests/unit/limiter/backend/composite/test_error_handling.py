@@ -77,9 +77,9 @@ class TestCheckLimitErrorHandling:
         fallback_result = RateLimitResult(
             is_exceeded=False,
             limit_times=5,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=4,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         fallback.check_limit.return_value = fallback_result
 
@@ -123,9 +123,9 @@ class TestCheckLimitErrorHandling:
         primary_result = RateLimitResult(
             is_exceeded=False,
             limit_times=5,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=4,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         primary.check_limit.return_value = primary_result
 
@@ -352,9 +352,9 @@ class TestEdgeCasesAndBoundaryConditions:
             return RateLimitResult(
                 is_exceeded=False,
                 limit_times=5,
-                total_hits=1,
+                retry_after_ms=0,
                 remaining_requests=4,
-                reset_time_milliseconds=60000,
+                reset_time=None,
             )
 
         primary.check_limit.side_effect = delayed_check
@@ -402,9 +402,9 @@ class TestExceptionTypeHandling:
         fallback_result = RateLimitResult(
             is_exceeded=False,
             limit_times=5,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=4,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         fallback.check_limit.return_value = fallback_result
         backend._is_backend_available = MagicMock(side_effect=lambda b: b == fallback)
@@ -436,9 +436,9 @@ class TestExceptionTypeHandling:
         fallback_result = RateLimitResult(
             is_exceeded=False,
             limit_times=5,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=4,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         fallback.check_limit.return_value = fallback_result
         backend._is_backend_available = MagicMock(side_effect=lambda b: b == fallback)
@@ -470,9 +470,9 @@ class TestExceptionTypeHandling:
         fallback_result = RateLimitResult(
             is_exceeded=False,
             limit_times=5,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=4,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         fallback.check_limit.return_value = fallback_result
         backend._is_backend_available = MagicMock(side_effect=lambda b: b == fallback)
@@ -505,9 +505,9 @@ class TestErrorStatisticsAccuracy:
         fallback.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=5,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=4,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         backend._is_backend_available = MagicMock(side_effect=lambda b: b == fallback)
 
@@ -583,9 +583,9 @@ class TestRecoveryScenarios:
         fallback.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=5,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=4,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         backend._is_backend_available = MagicMock(side_effect=lambda b: b == fallback)
 
@@ -601,9 +601,9 @@ class TestRecoveryScenarios:
         primary.check_limit.return_value = RateLimitResult(
             is_exceeded=False,
             limit_times=5,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=4,
-            reset_time_milliseconds=60000,
+            reset_time=None,
         )
         backend._is_backend_available = MagicMock(return_value=True)
 

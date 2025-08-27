@@ -13,6 +13,7 @@ The fixtures support:
 - Statistics verification
 """
 
+import datetime
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -64,9 +65,9 @@ class MockLimiterBackend(LimiterBackend):
         return RateLimitResult(
             is_exceeded=False,
             limit_times=config.times,
-            total_hits=1,
+            retry_after_ms=0,
             remaining_requests=config.times - 1,
-            reset_time_milliseconds=int(config.total_milliseconds),
+            reset_time=None,
         )
 
     def is_connected(self, raise_exc: bool = False) -> bool:
@@ -287,9 +288,9 @@ def exceeded_limit_result() -> RateLimitResult:
     return RateLimitResult(
         is_exceeded=True,
         limit_times=10,
-        total_hits=11,
+        retry_after_ms=60000,
         remaining_requests=0,
-        reset_time_milliseconds=60000,
+        reset_time=datetime.datetime.now() + datetime.timedelta(minutes=5),
     )
 
 
@@ -299,9 +300,9 @@ def allowed_limit_result() -> RateLimitResult:
     return RateLimitResult(
         is_exceeded=False,
         limit_times=10,
-        total_hits=5,
+        retry_after_ms=0,
         remaining_requests=5,
-        reset_time_milliseconds=60000,
+        reset_time=None,
     )
 
 

@@ -32,3 +32,6 @@ class MemoryLimiterBackendConnectConfig(LimiterBackendConnectConfig):
         if v <= 0:
             raise ValueError("max_keys must be positive")
         return v
+
+    class Config:
+        extra = "forbid"

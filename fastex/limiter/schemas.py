@@ -40,3 +40,4 @@ class RateLimitConfig(BaseModel):
 
     class Config:
         frozen = True
+        extra = "forbid"

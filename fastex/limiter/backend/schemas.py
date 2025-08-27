@@ -13,4 +13,4 @@ class RateLimitResult(BaseModel):
     reset_time: datetime | None = None
 
     class Config:
-        frozen = True
+        extra = "forbid"
