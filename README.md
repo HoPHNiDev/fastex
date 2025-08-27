@@ -13,7 +13,7 @@ FastEx — lightweight extensions and utilities for building FastAPI application
 ## Installation
 
 ```bash
-pip3 install git+https://github.com/HoPHNiDev/fastex.git
+pip install git+https://github.com/HoPHNiDev/fastex.git
 ```
 
 ## Quick Start
