@@ -21,6 +21,8 @@ pip install git+https://github.com/HoPHNiDev/fastex.git
 ### Basic Rate Limiting
 
 ```python
+from contextlib import asynccontextmanager
+from typing import Any
 from fastapi import FastAPI, Depends
 from fastex.limiter import configure_limiter, RateLimiter, RedisLimiterBackend
 from fastex.limiter.backend.redis.schemas import RedisLimiterBackendConnectConfig
@@ -35,30 +37,33 @@ async def setup_limiter():
     )
     await configure_limiter(backend)
 
-# Use in FastAPI
-app = FastAPI()
-
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> Any:
     await setup_limiter()
+    yield
 
-@app.get("/api/data")
-async def get_data(
-    rate_limiter: RateLimiter = Depends(RateLimiter(times=10, seconds=60))
-):
+# Use in FastAPI
+app = FastAPI(lifespan=lifespan)
+
+@app.get(
+    "/api/data",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))]
+)
+async def get_data():
     return {"data": "your data here"}
 ```
 
 ### Multiple Rate Limits
 
 ```python
-@app.get("/api/sensitive")
-async def sensitive_endpoint(
-    # 5 requests per minute
-    rate_limiter_1: RateLimiter = Depends(RateLimiter(times=5, minutes=1)),
-    # 1 request per second
-    rate_limiter_2: RateLimiter = Depends(RateLimiter(times=1, seconds=1))
-):
+@app.get(
+    "/api/sensitive",
+    dependencies=[
+        Depends(RateLimiter(times=5, seconds=60)),
+        Depends(RateLimiter(times=1, seconds=5)),
+    ],
+)
+async def sensitive_endpoint():
     return {"message": "sensitive data"}
 ```
 
@@ -96,15 +101,10 @@ from fastex.limiter.backend.memory import InMemoryLimiterBackend
 from fastex.limiter.backend.memory.schemas import MemoryLimiterBackendConnectConfig
 
 backend = InMemoryLimiterBackend(
-    cleanup_interval_seconds=300,  # Cleanup every 5 minutes
+    cleanup_interval_seconds=300,  # Auto cleanup expired records every 5 minutes
     max_keys=10000  # Memory protection limit
 )
-await backend.connect(
-    MemoryLimiterBackendConnectConfig(
-        cleanup_interval_seconds=300,
-        max_keys=10000
-    )
-)
+await backend.connect()
 ```
 
 **Customization Options:**
@@ -161,16 +161,15 @@ async def custom_identifier(request: Request) -> str:
     user_id = request.headers.get("X-User-ID", "anonymous")
     return f"user:{user_id}"
 
-@app.get("/api/user-data")
-async def get_user_data(
-    rate_limiter: RateLimiter = Depends(
-        RateLimiter(
-            times=10, 
-            seconds=60,
-            identifier=custom_identifier
+@app.get(
+    "/api/user-data",
+    dependencies=[
+        Depends(
+            RateLimiter(times=5, seconds=60, identifier=custom_identifier)
         )
-    )
-):
+    ]
+)
+async def get_user_data():
     return {"user_data": "..."}
 ```
 
@@ -183,16 +182,15 @@ async def custom_callback(request: Request, response: Response, result: RateLimi
     # Add custom headers
     response.headers["X-RateLimit-RetryAfter"] = str(result.retry_after_ms)
 
-@app.get("/api/limited")
-async def limited_endpoint(
-    rate_limiter: RateLimiter = Depends(
-        RateLimiter(
-            times=5, 
-            seconds=60,
-            callback=custom_callback
+@app.get(
+    "/api/limited",
+    dependencies=[
+        Depends(
+            RateLimiter(times=5, seconds=60, callback=custom_callback)
         )
-    )
-):
+    ]
+)
+async def limited_endpoint():
     return {"message": "limited data"}
 ```
 
@@ -208,14 +206,14 @@ class CustomScript(LuaScript):
         local key = KEYS[1]
         local limit = tonumber(ARGV[1])
         local window = tonumber(ARGV[2])
-        
+
         -- Custom rate limiting logic
         return {retry_after_ms, current_count}
         """
-    
+
     def extra_params(self) -> list[str]:
         return []
-    
+
     def parse_result(self, result) -> tuple[int, int]:
         return result[0], result[1]
 
@@ -276,7 +274,7 @@ print(f"Memory usage: {memory_stats['total_entries']}")
 # Check backend health
 if composite.is_connected():
     print("Composite backend is healthy")
-    
+
 # Force switch backends (for maintenance)
 await composite.force_switch_to_primary()
 await composite.force_switch_to_fallback()
@@ -290,7 +288,7 @@ await composite.force_switch_to_fallback()
 from fastex.limiter.backend.enums import FallbackMode
 
 # ALLOW: Allow requests when backend is unavailable
-# RAISE: Raise exceptions when backend is unavailable  
+# RAISE: Raise exceptions when backend is unavailable
 # DENY: Deny requests when backend is unavailable
 
 config = RedisLimiterBackendConnectConfig(

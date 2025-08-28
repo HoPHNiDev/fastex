@@ -58,7 +58,7 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
 
     async def connect(
         self,
-        config: LimiterBackendConnectConfig,
+        config: LimiterBackendConnectConfig | None = None,
     ) -> None:
         """
         Connect the in-memory backend.
@@ -70,12 +70,16 @@ class InMemoryLimiterBackend(BaseLimiterBackend):
             raise LimiterBackendError(
                 "Invalid config type. Expected MemoryLimiterBackendConfig"
             )
-        if config.cleanup_interval_seconds is not None:
+        if config and config.cleanup_interval_seconds is not None:
             self._cleanup_interval = config.cleanup_interval_seconds
-        if config.max_keys is not None:
+        if config and config.max_keys is not None:
             self._max_keys = config.max_keys
 
-        self._fallback_mode = config.fallback_mode or limiter_settings.FALLBACK_MODE
+        self._fallback_mode = (
+            config.fallback_mode
+            if config and config.fallback_mode
+            else limiter_settings.FALLBACK_MODE
+        )
         self._connected = True
 
         self._cleanup_task = asyncio.create_task(self._background_cleanup())
