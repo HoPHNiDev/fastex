@@ -522,6 +522,7 @@ class TestRedisLimiterBackendEdgeCases:
     async def test_check_limit_with_negative_retry_after(self) -> None:
         """Test handling of negative retry_after values."""
         mock_redis = AsyncMock(spec=aredis.Redis)
+        mock_redis.evalsha.return_value = [0, 10]
 
         mock_script = MagicMock()
         mock_script.extra_params.return_value = []

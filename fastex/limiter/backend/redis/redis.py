@@ -14,6 +14,7 @@ from fastex.limiter.backend.schemas import RateLimitResult
 from fastex.limiter.config import limiter_settings
 from fastex.limiter.schemas import RateLimitConfig
 from fastex.logging.logger import FastexLogger
+from fastex.utils import maybe_await
 
 
 class RedisLimiterBackend(BaseLimiterBackend):
@@ -86,9 +87,14 @@ class RedisLimiterBackend(BaseLimiterBackend):
                 *extra_params,
             )
 
-            result = await self._maybe_await(result)
+            result = await maybe_await(result)
 
-            retry_after_ms, current = self.lua_script.parse_result(result)
+            if isinstance(result, list) or isinstance(result, tuple):
+                retry_after_ms, current = self.lua_script.parse_result(result)
+            else:
+                raise LimiterBackendError(
+                    f"Unexpected Lua script result type: {type(result)}"
+                )
 
             if retry_after_ms > 0:
                 reset_time = datetime.now() + timedelta(milliseconds=retry_after_ms)
@@ -107,8 +113,12 @@ class RedisLimiterBackend(BaseLimiterBackend):
             )
 
         except (redis_exc.ConnectionError, redis_exc.RedisError) as e:
-            self.logger.error(f"Redis unavailable: {e}. Skipping rate limit.")
+            self.logger.error(f"Redis unavailable: {e}. Handling fallback.")
             return await self._handle_fallback(e, config)
+
+        except LimiterBackendError:
+            self.logger.error("LimiterBackendError encountered. Handling fallback.")
+            return await self._handle_fallback("LimiterBackendError", config)
 
     def is_connected(self, raise_exc: bool = False) -> bool:
         """Check if connected to Redis and Lua script is loaded."""

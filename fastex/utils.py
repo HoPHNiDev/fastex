@@ -1,6 +1,8 @@
 import inspect
-from collections.abc import Callable
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
+
+T = TypeVar("T")
 
 
 def singleton(cls):
@@ -23,3 +25,9 @@ def _filter_arguments(
     filtered_arguments = {k: v for k, v in bound.arguments.items()}
 
     return filtered_arguments
+
+
+async def maybe_await(value: Awaitable[T] | T) -> T:
+    if inspect.isawaitable(value):
+        return await value
+    return value
