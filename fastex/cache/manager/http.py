@@ -7,9 +7,9 @@ from fastapi import Request, Response
 from fastapi.dependencies.utils import get_typed_signature
 
 from fastex.cache.backend.interfaces import CacheBackend
-from fastex.cache.key_builder.interfaces import KeyBuilder
 from fastex.cache.manager.base import BaseCacheManager
 from fastex.cache.manager.interfaces import IHttpCacheManager
+from fastex.cache.manager.key_builder.key_builder import HttpKeyBuilder
 from fastex.cache.tags import CacheTagsEnum
 from fastex.cache.tags.extractor.interfaces import TagExtractor
 from fastex.cache.tags.interfaces import AbstractCacheTags
@@ -33,19 +33,19 @@ injected_response = Parameter(
 class HttpCacheManager(BaseCacheManager, IHttpCacheManager):
     """Manager for HTTP Caching"""
 
+    key_builder = HttpKeyBuilder
+
     def __init__(
         self,
         backend: CacheBackend,
         tag_manager: type[AbstractCacheTags],
-        key_builder: KeyBuilder,
         tag_extractors: list[TagExtractor] | None = None,
     ):
         super().__init__(backend, tag_manager)
-        self.key_builder = key_builder
         self.tag_extractors = tag_extractors or []
         self.cache_status_header = "X-Cache-Status"
 
-    def http_cache_decorator(
+    def cache_decorator(
         self,
         ttl: int = 3600,
         tags: list[str | CacheTagsEnum] | None = None,

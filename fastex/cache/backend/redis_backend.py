@@ -9,7 +9,7 @@ from fastex.utils import maybe_await
 
 
 class RedisCacheBackend(CacheBackend):
-    def __init__(self, coder: CacheCoder) -> None:
+    def __init__(self, coder: CacheCoder | type[CacheCoder]) -> None:
         self._coder = coder
         self._redis: aioredis.Redis | None = None
         self.logger = FastexLogger(name="RedisCacheBackend")
@@ -17,7 +17,7 @@ class RedisCacheBackend(CacheBackend):
     async def connect(self, url: str) -> None:
         """Connect to the Redis server."""
         if not self.is_initialized():
-            self._redis = await aioredis.Redis.from_url(url)
+            self._redis = aioredis.Redis.from_url(url)
             self.logger.info("Connected to Redis server at %s", url)
 
     async def close(self) -> None:

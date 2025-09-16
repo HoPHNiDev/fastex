@@ -1,5 +1,14 @@
+import inspect
 from enum import Enum
-from typing import Any, TypeVar
+from typing import (
+    Any,
+    TypeVar,
+    Callable,
+    ParamSpec,
+    Coroutine,
+    overload,
+    Optional,
+)
 
 from fastex.cache.backend.interfaces import CacheBackend
 from fastex.cache.config import cache_settings
@@ -9,7 +18,35 @@ from fastex.cache.tags.extractor.interfaces import TagExtractor
 from fastex.cache.tags.interfaces import AbstractCacheTags
 from fastex.logging.logger import FastexLogger
 
+P = ParamSpec("P")
 R = TypeVar("R")
+
+
+@overload
+def tags_enabled(
+    func: Callable[P, Coroutine[Any, Any, R]],
+) -> Callable[P, Coroutine[Any, Any, Optional[R]]]: ...
+@overload
+def tags_enabled(func: Callable[P, R]) -> Callable[P, Optional[R]]: ...
+
+
+def tags_enabled(func: Callable[P, Any]) -> Callable[P, Any]:
+    if inspect.iscoroutinefunction(func):
+
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Optional[Any]:
+            if not cache_settings.TAGS_ENABLED:
+                return None
+            return await func(*args, **kwargs)
+
+        return wrapper
+    else:
+
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Optional[Any]:  # type: ignore
+            if not cache_settings.TAGS_ENABLED:
+                return None
+            return func(*args, **kwargs)
+
+        return wrapper
 
 
 class CacheTags(AbstractCacheTags):
@@ -24,6 +61,7 @@ class CacheTags(AbstractCacheTags):
         self._extractor = CompositeTagExtractor(extractors) if extractors else None
         self.logger = FastexLogger(name="CacheTags")
 
+    @tags_enabled
     async def invalidate_tags(
         self,
         tags: list[str | CacheTagsEnum],
@@ -42,6 +80,7 @@ class CacheTags(AbstractCacheTags):
             self.logger.debug("Invalidating keys: %s for tags: %s", keys, tags)
             await self._backend.invalidate_keys(list(keys))
 
+    @tags_enabled
     async def set_tags(self, key: str) -> None:
         if not cache_settings.TAGS_ENABLED:
             return
@@ -50,12 +89,14 @@ class CacheTags(AbstractCacheTags):
                 tag = tag.value
             await self._backend.add_tag(tag, key)
 
+    @tags_enabled
     def append_tag(self, tag: str | CacheTagsEnum) -> None:
         if isinstance(tag, Enum):
             tag = tag.value
         if tag not in self._tags:
             self._tags.append(tag)
 
+    @tags_enabled
     async def extract_tags(self, context: dict[str, Any]) -> None:
         if not self._extractor:
             return

@@ -1,11 +1,13 @@
 from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Any, TypeVar
+from types import FunctionType
+from typing import Any, TypeVar, cast
 
 from fastex.cache.backend.interfaces import CacheBackend
-from fastex.cache.key_builder.interfaces import KeyBuilder
+from fastex.cache.config import cache_settings
 from fastex.cache.manager.base import BaseCacheManager
 from fastex.cache.manager.interfaces import IDecoratorCacheManager
+from fastex.cache.manager.key_builder.key_builder import FunctionKeyBuilder
 from fastex.cache.tags import CacheTagsEnum
 from fastex.cache.tags.extractor.interfaces import TagExtractor
 from fastex.cache.tags.interfaces import AbstractCacheTags
@@ -17,20 +19,20 @@ R = TypeVar("R")
 class FunctionCacheManager(BaseCacheManager, IDecoratorCacheManager):
     """Manager for Function Caching"""
 
+    key_builder = FunctionKeyBuilder
+
     def __init__(
         self,
         backend: CacheBackend,
         tag_manager: type[AbstractCacheTags],
-        key_builder: KeyBuilder,
         tag_extractors: list[TagExtractor] | None = None,
     ):
         super().__init__(backend, tag_manager)
-        self.key_builder = key_builder
         self.tag_extractors = tag_extractors or []
 
     def cache_decorator(
         self,
-        ttl: int = 3600,
+        ttl: int = cache_settings.DEFAULT_TTL,
         tags: list[str | CacheTagsEnum] | None = None,
         **kwargs: Any,
     ) -> Callable[..., Any]:
@@ -48,7 +50,9 @@ class FunctionCacheManager(BaseCacheManager, IDecoratorCacheManager):
                 )
                 filtered_kwargs = _filter_arguments(func, *args, **func_kwargs)
 
-                cache_key = await self.key_builder.build_key(func, **filtered_kwargs)
+                cache_key = await self.key_builder.build_key(
+                    cast(FunctionType, func), **filtered_kwargs
+                )
 
                 context = {"parameters": filtered_kwargs}
                 await tag_manager.extract_tags(context=context)
