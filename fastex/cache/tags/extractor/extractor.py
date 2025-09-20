@@ -5,10 +5,10 @@ from fastapi_pagination import Page
 from pydantic import BaseModel
 from sqlalchemy.orm import DeclarativeBase
 
-from fastex.cache.tags.extractor.interfaces import TagExtractor
+from fastex.cache.tags.extractor.interfaces import ITagExtractor
 
 
-class ParameterTagExtractor(TagExtractor):
+class ParameterTagExtractor(ITagExtractor):
     """Extracts tags from function parameters"""
 
     async def extract_tags(self, context: dict[str, Any]) -> list[str]:
@@ -20,7 +20,7 @@ class ParameterTagExtractor(TagExtractor):
         return tags
 
 
-class ResultTagExtractor(TagExtractor):
+class ResultTagExtractor(ITagExtractor):
     """Extracts tags from function result"""
 
     async def extract_tags(self, context: dict[str, Any]) -> list[str]:
@@ -49,7 +49,7 @@ class ResultTagExtractor(TagExtractor):
         return []
 
 
-class RequestTagExtractor(TagExtractor):
+class RequestTagExtractor(ITagExtractor):
     """Extracts tags from FastAPI request parameters"""
 
     async def extract_tags(self, context: dict[str, Any]) -> list[str]:
@@ -69,10 +69,10 @@ class RequestTagExtractor(TagExtractor):
         return tags
 
 
-class CompositeTagExtractor(TagExtractor):
+class CompositeTagExtractor(ITagExtractor):
     """Combines multiple TagExtractors to extract tags from various sources"""
 
-    def __init__(self, extractors: list[TagExtractor]):
+    def __init__(self, extractors: list[ITagExtractor]):
         self.extractors = extractors
 
     async def extract_tags(self, context: dict[str, Any]) -> list[str]:

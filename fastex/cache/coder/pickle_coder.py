@@ -3,10 +3,10 @@ from typing import Any
 
 from starlette.templating import _TemplateResponse as TemplateResponse  # noqa: N817
 
-from fastex.cache.coder.interface import CacheCoder
+from fastex.cache.coder.interfaces import ICacheCoder
 
 
-class PickleCacheCoder(CacheCoder):
+class PickleCacheCoder(ICacheCoder):
     @classmethod
     def encode(cls, value: Any) -> bytes:
         """Encode a value into bytes for storage in the cache using pickle."""

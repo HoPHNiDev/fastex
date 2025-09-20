@@ -4,7 +4,7 @@ from typing import Any, TypeVar
 
 from fastex.cache.manager.key_builder import KeyBuilder
 from fastex.cache.tags import CacheTagsEnum
-from fastex.cache.tags.interfaces import AbstractCacheTags
+from fastex.cache.tags.interfaces import ICacheTags
 
 R = TypeVar("R")
 
@@ -20,7 +20,7 @@ class ICacheManager(ABC):
         key: str,
         factory: Callable[[], Awaitable[R]],
         ttl: int,
-        tag_manager: AbstractCacheTags | None = None,
+        tag_manager: ICacheTags | None = None,
     ) -> R: ...
 
 

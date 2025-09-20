@@ -10,12 +10,12 @@ from typing import (
     Optional,
 )
 
-from fastex.cache.backend.interfaces import CacheBackend
+from fastex.cache.backend.interfaces import ICacheBackend
 from fastex.cache.config import cache_settings
 from fastex.cache.tags import CacheTagsEnum
 from fastex.cache.tags.extractor.extractor import CompositeTagExtractor
-from fastex.cache.tags.extractor.interfaces import TagExtractor
-from fastex.cache.tags.interfaces import AbstractCacheTags
+from fastex.cache.tags.extractor.interfaces import ITagExtractor
+from fastex.cache.tags.interfaces import ICacheTags
 from fastex.logging.logger import FastexLogger
 
 P = ParamSpec("P")
@@ -49,12 +49,12 @@ def tags_enabled(func: Callable[P, Any]) -> Callable[P, Any]:
         return wrapper
 
 
-class CacheTags(AbstractCacheTags):
+class CacheTags(ICacheTags):
     def __init__(
         self,
-        backend: CacheBackend,
+        backend: ICacheBackend,
         tags: list[str | CacheTagsEnum] | None = None,
-        extractors: list[TagExtractor] | None = None,
+        extractors: list[ITagExtractor] | None = None,
     ) -> None:
         self._tags = tags or list()
         self._backend = backend

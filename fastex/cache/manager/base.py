@@ -1,10 +1,10 @@
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
-from fastex.cache.backend.interfaces import CacheBackend
+from fastex.cache.backend.interfaces import ICacheBackend
 from fastex.cache.manager.interfaces import ICacheManager
 from fastex.cache.tags import CacheTagsEnum
-from fastex.cache.tags.interfaces import AbstractCacheTags
+from fastex.cache.tags.interfaces import ICacheTags
 from fastex.logging.logger import FastexLogger
 
 R = TypeVar("R")
@@ -15,8 +15,8 @@ class BaseCacheManager(ICacheManager):
 
     def __init__(
         self,
-        backend: CacheBackend,
-        tag_manager: type[AbstractCacheTags],
+        backend: ICacheBackend,
+        tag_manager: type[ICacheTags],
     ):
         self.tag_manager = tag_manager
         self.backend = backend
@@ -27,7 +27,7 @@ class BaseCacheManager(ICacheManager):
         key: str,
         factory: Callable[[], Awaitable[R]],
         ttl: int,
-        tag_manager: AbstractCacheTags | None = None,
+        tag_manager: ICacheTags | None = None,
     ) -> R:
         """Get a value from the cache or set it using the factory function if not present."""
         cached: R = await self.backend.get_value(key)

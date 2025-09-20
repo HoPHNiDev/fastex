@@ -2,14 +2,14 @@ from typing import Any
 
 from redis import asyncio as aioredis
 
-from fastex.cache.backend.interfaces import CacheBackend
-from fastex.cache.coder.interface import CacheCoder
+from fastex.cache.backend.interfaces import ICacheBackend
+from fastex.cache.coder.interfaces import ICacheCoder
 from fastex.logging.logger import FastexLogger
 from fastex.utils import maybe_await
 
 
-class RedisCacheBackend(CacheBackend):
-    def __init__(self, coder: CacheCoder | type[CacheCoder]) -> None:
+class RedisCacheBackend(ICacheBackend):
+    def __init__(self, coder: ICacheCoder | type[ICacheCoder]) -> None:
         self._coder = coder
         self._redis: aioredis.Redis | None = None
         self.logger = FastexLogger(name="RedisCacheBackend")
@@ -69,5 +69,5 @@ class RedisCacheBackend(CacheBackend):
         return self._redis
 
     @property
-    def coder(self) -> CacheCoder:
+    def coder(self) -> ICacheCoder:
         return self._coder

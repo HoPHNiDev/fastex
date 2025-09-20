@@ -6,13 +6,13 @@ from typing import Any, ParamSpec, TypeVar, cast
 from fastapi import Request, Response
 from fastapi.dependencies.utils import get_typed_signature
 
-from fastex.cache.backend.interfaces import CacheBackend
+from fastex.cache.backend.interfaces import ICacheBackend
 from fastex.cache.manager.base import BaseCacheManager
 from fastex.cache.manager.interfaces import IHttpCacheManager
 from fastex.cache.manager.key_builder.key_builder import HttpKeyBuilder
 from fastex.cache.tags import CacheTagsEnum
-from fastex.cache.tags.extractor.interfaces import TagExtractor
-from fastex.cache.tags.interfaces import AbstractCacheTags
+from fastex.cache.tags.extractor.interfaces import ITagExtractor
+from fastex.cache.tags.interfaces import ICacheTags
 from fastex.utils import maybe_await
 
 P = ParamSpec("P")
@@ -37,9 +37,9 @@ class HttpCacheManager(BaseCacheManager, IHttpCacheManager):
 
     def __init__(
         self,
-        backend: CacheBackend,
-        tag_manager: type[AbstractCacheTags],
-        tag_extractors: list[TagExtractor] | None = None,
+        backend: ICacheBackend,
+        tag_manager: type[ICacheTags],
+        tag_extractors: list[ITagExtractor] | None = None,
     ):
         super().__init__(backend, tag_manager)
         self.tag_extractors = tag_extractors or []

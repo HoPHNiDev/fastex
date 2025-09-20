@@ -1,6 +1,6 @@
 from typing import Literal
 
-from .interface import CacheCoder
+from .interfaces import ICacheCoder
 from .json_coder import JsonCacheCoder
 from .pickle_coder import PickleCacheCoder
 
@@ -11,7 +11,7 @@ CoderChoices = {
 CoderChoiceType = Literal["json", "pickle"]
 
 __all__ = [
-    "CacheCoder",
+    "ICacheCoder",
     "JsonCacheCoder",
     "PickleCacheCoder",
     "CoderChoiceType",

@@ -9,7 +9,7 @@ from typing import (
 from fastapi.encoders import jsonable_encoder
 from starlette.responses import JSONResponse
 
-from fastex.cache.coder.interface import CacheCoder
+from fastex.cache.coder.interfaces import ICacheCoder
 
 CONVERTERS: dict[str, Callable[[str], Any]] = {
     "date": lambda x: datetime.date.fromisoformat(x),
@@ -41,7 +41,7 @@ def object_hook(obj: Any) -> Any:
         raise TypeError(f"Unknown {_spec_type}")
 
 
-class JsonCacheCoder(CacheCoder):
+class JsonCacheCoder(ICacheCoder):
     @classmethod
     def encode(cls, value: Any) -> bytes:
         """Encode a value into bytes for storage in the cache using json."""

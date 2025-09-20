@@ -1,6 +1,6 @@
 from typing import Literal
 
-from .interfaces import TagExtractor
+from .interfaces import ITagExtractor
 from .extractor import (
     ParameterTagExtractor,
     RequestTagExtractor,
@@ -16,7 +16,7 @@ ExtractorChoices = {
 ExtractorChoiceType = list[Literal["parameter", "request", "result"]]
 
 __all__ = [
-    "TagExtractor",
+    "ITagExtractor",
     "ParameterTagExtractor",
     "RequestTagExtractor",
     "ResultTagExtractor",

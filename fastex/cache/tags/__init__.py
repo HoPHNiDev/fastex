@@ -1,6 +1,6 @@
 from fastex.cache.tags.enums import CacheTagsEnum
 from fastex.cache.tags.extractor import (
-    TagExtractor,
+    ITagExtractor,
     ParameterTagExtractor,
     RequestTagExtractor,
     ResultTagExtractor,
@@ -11,7 +11,7 @@ from fastex.cache.tags.extractor import (
 
 __all__ = [
     "CacheTagsEnum",
-    "TagExtractor",
+    "ITagExtractor",
     "ParameterTagExtractor",
     "RequestTagExtractor",
     "ResultTagExtractor",

@@ -4,7 +4,7 @@ from typing import TypeVar
 R = TypeVar("R")
 
 
-class CacheBackend(ABC):
+class ICacheBackend(ABC):
     @abstractmethod
     async def get_value(self, key: str) -> R:
         """Retrieve a value from the cache by its key."""

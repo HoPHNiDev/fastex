@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-class CacheCoder(ABC):
+class ICacheCoder(ABC):
     @classmethod
     @abstractmethod
     def encode(cls, value: Any) -> bytes:

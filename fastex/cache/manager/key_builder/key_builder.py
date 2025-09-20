@@ -4,13 +4,22 @@ from types import FunctionType
 from typing import Any
 
 from fastapi import Request
+from fastex.cache.manager.key_builder.interfaces import (
+    IFunctionKeyBuilder,
+    IHttpKeyBuilder,
+)
+from fastex.utils import maybe_await
 
 
-class FunctionKeyBuilder:
+class FunctionKeyBuilder(IFunctionKeyBuilder):
     """Builds keys for function calls"""
 
-    @staticmethod
-    async def build_key(func: FunctionType, **kwargs: Any) -> str:
+    @classmethod
+    async def build_key(cls, func: FunctionType, **kwargs: Any) -> str:
+        if cls.callback_func:
+            result = cls.callback_func(func, **kwargs)
+            return await maybe_await(result)
+
         excluded_args = {"session", "self", "cls"}
         filtered_kwargs = {k: v for k, v in kwargs.items() if k not in excluded_args}
 
@@ -21,11 +30,15 @@ class FunctionKeyBuilder:
         return f"cache:func:{cache_key}"
 
 
-class HttpKeyBuilder:
+class HttpKeyBuilder(IHttpKeyBuilder):
     """Builds keys for HTTP requests"""
 
-    @staticmethod
-    async def build_key(request: Request, identity_id: str | None = None) -> str:
+    @classmethod
+    async def build_key(cls, request: Request, identity_id: str | None = None) -> str:
+        if cls.callback_func:
+            result = cls.callback_func(request, identity_id)
+            return await maybe_await(result)
+
         func_name = f"{request.url.path}:{request.method}"
         query_params = dict(request.query_params)
         path_params = dict(request.path_params)
