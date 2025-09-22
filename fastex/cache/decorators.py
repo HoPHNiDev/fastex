@@ -55,29 +55,6 @@ def __build_cache_components(
     extractors: ExtractorChoiceType | list[ITagExtractor] | None = None,
 ) -> tuple[ICacheBackend | None, list[ITagExtractor] | None]:
     """Build and return cache_backend and tag_extractors."""
-    cache_backend: ICacheBackend | None = None
-
-    if backend:
-        if inspect.isclass(backend) and issubclass(backend, ICacheBackend):
-            cache_backend = backend
-        else:
-            if not coder:
-                raise ValueError("Backend could not be initialized without coder")
-
-            if inspect.isclass(coder) and issubclass(coder, ICacheCoder):
-                cache_coder = coder
-            elif isinstance(coder, str):
-                cache_coder = CoderChoices[coder]
-            else:
-                raise TypeError(
-                    f"{type(coder)} is not valid | choose one of {list(CoderChoices.keys())} "
-                    f"or provide an ICacheCoder subclass"
-                )
-
-            if not isinstance(backend, str):
-                raise TypeError("Backend must be str when coder is provided")
-            cache_backend = BackendChoices[backend](cache_coder)
-
     tag_extractors: list[ITagExtractor] | None = None
     if extractors:
         if all(
@@ -96,6 +73,37 @@ def __build_cache_components(
                 f"Extractors invalid | choose from {list(ExtractorChoices.keys())} "
                 f"or provide subclasses of ITagExtractor"
             )
+
+    if backend is None:
+        return None, tag_extractors
+
+    if isinstance(backend, ICacheBackend):
+        cache_backend = backend
+    elif inspect.isclass(backend) and issubclass(backend, ICacheBackend):
+        cache_backend = backend()
+    elif isinstance(backend, str):
+        if not coder:
+            raise ValueError("Backend could not be initialized without coder")
+
+        if (
+            inspect.isclass(coder)
+            and issubclass(coder, ICacheCoder)
+            or isinstance(coder, ICacheCoder)
+        ):
+            cache_coder: ICacheCoder | type[ICacheCoder] = coder
+        elif isinstance(coder, str):
+            cache_coder = CoderChoices[coder]
+        else:
+            raise TypeError(
+                f"{type(coder)} is not valid | choose one of {list(CoderChoices.keys())} "
+                f"or provide an ICacheCoder subclass"
+            )
+        cache_backend = BackendChoices[backend](cache_coder)
+    else:
+        raise TypeError(
+            f"Invalid backend type: {type(backend)}. Choose one of {list(BackendChoices.keys())} "
+            f"or provide an ICacheBackend subclass"
+        )
 
     return cache_backend, tag_extractors
 
